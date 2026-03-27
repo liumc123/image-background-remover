@@ -1,60 +1,78 @@
-# Image Background Remover
+# RmBg — Remove Image Backgrounds
 
-Remove image backgrounds with one click. Powered by Remove.bg API + Cloudflare Workers.
+> 🔗 **Live Demo**: https://rmbg.pages.dev
 
-## Tech Stack
+A beautiful, privacy-first image background removal tool. 100% runs in your browser — no images are uploaded to any server.
 
-- **Backend**: Cloudflare Workers
-- **API**: Remove.bg
-- **Frontend**: Vanilla HTML/CSS/JS
+![RmBg Screenshot](https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=1200&q=80)
 
-## Quick Start
+## ✨ Features
 
-### 1. Configure API Key
+- 🖥️ **100% Local Processing** — All AI inference runs in your browser via WebAssembly
+- 🔒 **Complete Privacy** — Your images never leave your device
+- ⚡ **Instant Results** — Get transparent PNGs in seconds
+- 🎨 **Beautiful UI** — Dark mode, glassmorphism, smooth animations
+- 📱 **Responsive** — Works on desktop and mobile
 
-Set your Remove.bg API key in the Worker environment variables:
+## 🛠️ Tech Stack
 
-```bash
-# wrangler.toml
-[vars]
-REMOVE_BG_API_KEY = "your_api_key_here"
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 15 + Tailwind CSS |
+| AI Engine | @imgly/background-removal (BRIA RMBG) |
+| Deployment | Cloudflare Pages (GitHub Integration) |
+| Backend (optional) | Cloudflare Workers + Remove.bg API |
+
+## 🚀 Deploy to Cloudflare Pages
+
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) → **Pages** → **Create a Project** → **Connect to Git**
+2. Connect `liumc123/image-background-remover`
+3. Configure:
+
+   | Setting | Value |
+   |---------|-------|
+   | Production branch | `main` |
+   | Build command | `npm run build` |
+   | Build output directory | `.next` |
+   | Environment variables | `NODE_VERSION = 20` |
+
+4. Save and deploy — every push to `main` auto-deploys ✅
+
+## 📁 Project Structure
+
+```
+image-background-remover/
+├── frontend/              # Next.js frontend
+│   ├── src/app/          # App router pages
+│   │   ├── layout.tsx    # Root layout
+│   │   ├── page.tsx      # Main UI (drop zone, preview, download)
+│   │   └── globals.css   # Tailwind + custom styles
+│   ├── package.json
+│   └── next.config.ts
+├── worker/               # Optional Cloudflare Worker (Remove.bg API)
+│   ├── index.js
+│   ├── wrangler.toml
+│   └── package.json
+├── .github/workflows/    # CI/CD
+│   └── deploy-worker.yml # Auto-deploys Worker on push
+├── DEPLOY.md             # Full deployment guide
+└── README.md
 ```
 
-Get your API key at [remove.bg](https://www.remove.bg/api)
+## 🔧 How It Works
 
-### 2. Deploy Worker
+The frontend uses `@imgly/background-removal` — a WebAssembly-based AI model that runs entirely in the browser:
 
-```bash
-cd worker
-npm install
-npx wrangler deploy
+```
+User drops image → Browser downloads BRIA RMBG model (~20MB) → WASM inference → Transparent PNG
 ```
 
-### 3. Open Frontend
+No data is sent to any server.
 
-Simply open `frontend/index.html` in your browser.
+## 👤 Author
 
-Or deploy the frontend to Cloudflare Pages:
+**Liu** — [@liumc123](https://github.com/liumc123)
 
-```bash
-cd frontend
-npx wrangler pages deploy .
-```
-
-## API
-
-### POST /remove-bg
-
-Remove background from an image.
-
-**Request:**
-- Content-Type: `multipart/form-data`
-- Body: `image` (image file)
-
-**Response:**
-- Content-Type: `image/png`
-- Returns the processed image with transparent background.
-
-## License
+## 📄 License
 
 MIT
