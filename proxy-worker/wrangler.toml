@@ -1,0 +1,4 @@
+name = "rmbg-proxy"
+main = "index.js"
+compatibility_date = "2024-01-01"
+account_id = "f5f3956578d118a6398a891c3aca2605"
