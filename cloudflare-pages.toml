@@ -1,0 +1,2 @@
+build_command = "cd frontend && npm run build"
+build_output_dir = "frontend/out"
