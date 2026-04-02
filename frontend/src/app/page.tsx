@@ -264,14 +264,24 @@ export default function Home() {
   const [progress, setProgress] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<User>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [userData, setUserData] = useState<any>(null);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setMounted(true);
     loadGIS();
 
+    // Load stored token and user data
+    const storedToken = localStorage.getItem('auth_token');
+    if (storedToken) {
+      setAuthToken(storedToken);
+      loadUserData(storedToken);
+    }
+
     // @ts-ignore
-    window.handleCredentialResponse = (response: { credential: string }) => {
+    window.handleCredentialResponse = async (response: { credential: string }) => {
       try {
         const payload = JSON.parse(atob(response.credential.split('.')[1]));
         setUser({
@@ -279,11 +289,38 @@ export default function Home() {
           email: payload.email,
           picture: payload.picture,
         });
+        
+        // Get token from backend
+        const res = await fetch('https://rmbg-user-api.liumc666.workers.dev/api/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_token: response.credential })
+        });
+        const data = await res.json();
+        if (data.success && data.data.token) {
+          localStorage.setItem('auth_token', data.data.token);
+          setAuthToken(data.data.token);
+          loadUserData(data.data.token);
+        }
       } catch {
         console.error("Failed to parse credential");
       }
     };
   }, []);
+
+  async function loadUserData(token: string) {
+    try {
+      const res = await fetch('https://rmbg-user-api.liumc666.workers.dev/api/users/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUserData(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to load user data:', err);
+    }
+  }
 
   const handleSignOut = () => {
     // @ts-ignore
@@ -292,9 +329,34 @@ export default function Home() {
       window.google.accounts.id.disableAutoSelect();
     }
     setUser(null);
+    setAuthToken(null);
+    setUserData(null);
+    localStorage.removeItem('auth_token');
+  };
+
+  const canProcess = () => {
+    if (!userData) return false; // Must be logged in
+    if (userData.currentMembership) return true; // Members can always process
+    return (userData.free_uses_remaining ?? 0) > 0; // Free users need remaining uses
+  };
+
+  const getUsageMessage = () => {
+    if (!userData) return 'Sign in to get 3 free uses';
+    if (userData.currentMembership) return `${userData.currentMembership.name} Member - Unlimited`;
+    const remaining = userData.free_uses_remaining ?? 0;
+    if (remaining <= 0) return 'No free uses remaining';
+    return `${remaining} free use${remaining !== 1 ? 's' : ''} remaining`;
   };
 
   const processImage = async (file: File) => {
+    if (!userData) {
+      setErrorMessage("Please sign in to use this feature"); setState("error"); return;
+    }
+    if (!canProcess()) {
+      setShowUpgradePrompt(true);
+      setState("error");
+      return;
+    }
     if (file.size > 10 * 1024 * 1024) {
       setErrorMessage("File too large. Max 10MB allowed."); setState("error"); return;
     }
@@ -302,6 +364,27 @@ export default function Home() {
     if (!validTypes.includes(file.type)) {
       setErrorMessage("Invalid file type. Please use JPG, PNG, or WebP."); setState("error"); return;
     }
+    
+    // Deduct free use for non-members
+    if (!userData.currentMembership && authToken) {
+      try {
+        const res = await fetch('https://rmbg-user-api.liumc666.workers.dev/api/users/me/use-free', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        const data = await res.json();
+        if (data.success && data.data.allowed) {
+          // Update local userData
+          setUserData((prev: any) => ({
+            ...prev,
+            free_uses_remaining: data.data.remaining
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to deduct free use:', err);
+      }
+    }
+    
     const reader = new FileReader();
     reader.onload = (e) => setOriginalImage(e.target?.result as string);
     reader.readAsDataURL(file);
@@ -454,8 +537,67 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Auth */}
-            <AuthButton user={user} onSignOut={handleSignOut} />
+            {/* User Status Bar */}
+            <div className={`mt-4 ${mounted ? "fade-up fade-up-4" : ""}`}>
+              {user && userData ? (
+                <div className="flex items-center justify-center gap-3">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.10]">
+                    {user.picture && (
+                      <img src={user.picture} alt={user.name} className="w-5 h-5 rounded-full" />
+                    )}
+                    <span className="text-white/70 text-sm font-medium">{user.name}</span>
+                    <span className="text-white/30 text-xs">·</span>
+                    <span className={`text-xs font-medium ${
+                      userData.currentMembership 
+                        ? 'text-violet-400' 
+                        : userData.free_uses_remaining > 0 
+                          ? 'text-emerald-400' 
+                          : 'text-red-400'
+                    }`}>
+                      {getUsageMessage()}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleSignOut}
+                    className="text-white/30 hover:text-white/60 text-xs transition-colors"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-3">
+                  <p className="text-white/50 text-sm">Sign in to get 3 free uses</p>
+                  <div id="g_id_onload"
+                    data-client_id="810081244227-kqvuga30g7g9d34tpqj42klm7m367knk.apps.googleusercontent.com"
+                    data-context="signin"
+                    data-ux_mode="popup"
+                    data-callback="handleCredentialResponse"
+                    data-auto_prompt="false">
+                  </div>
+                  <div className="g_id_signin"
+                    data-type="standard"
+                    data-shape="rectangular"
+                    data-theme="outline"
+                    data-text="signin_with"
+                    data-size="large"
+                    data-logo_alignment="left">
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Upgrade Prompt */}
+            {showUpgradePrompt && !userData?.currentMembership && (
+              <div className="mt-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-center">
+                <p className="text-amber-400 text-sm font-medium mb-2">No free uses remaining</p>
+                <a
+                  href="/profile"
+                  className="inline-block px-4 py-2 rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white text-sm font-medium transition-all"
+                >
+                  Upgrade to Continue
+                </a>
+              </div>
+            )}
           </div>
 
           {/* ── Main card ───────────────────────────────── */}

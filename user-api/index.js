@@ -169,7 +169,7 @@ async function getUserByEmail(email) {
 
 async function createUser(data) {
   await DB.prepare(`
-    INSERT INTO users (id, email, password_hash, nickname, avatar_url) VALUES (?, ?, ?, ?, ?)
+    INSERT INTO users (id, email, password_hash, nickname, avatar_url, free_uses_remaining) VALUES (?, ?, ?, ?, ?, 3)
   `).bind(data.id, data.email, data.password_hash || null, data.nickname || null, data.avatar_url || null).run();
   return getUserById(data.id);
 }
@@ -502,6 +502,7 @@ async function handleGetUser(request) {
       nickname: user.nickname,
       avatar_url: user.avatar_url,
       points_balance: user.points_balance,
+      free_uses_remaining: user.free_uses_remaining ?? 3,
       bindings: bindings.map(b => ({ id: b.id, provider: b.provider, created_at: b.created_at })),
       currentMembership
     });
@@ -549,6 +550,48 @@ async function handleUpdateUser(request) {
     });
   } catch (error) {
     console.error('Update user error:', error);
+    return errorResponse('Internal server error', 500);
+  }
+}
+
+// POST /api/users/me/use-free
+async function handleUseFreeUse(request) {
+  try {
+    const auth = await getAuthUser(request);
+    if (!auth) return errorResponse('Unauthorized', 401);
+    
+    const user = await getUserById(auth.userId);
+    if (!user) return errorResponse('User not found', 404);
+    
+    // Check if user has membership (members don't need free uses)
+    const membership = await getUserActiveMembership(user.id);
+    if (membership) {
+      return jsonResponse({
+        success: true,
+        data: { allowed: true, reason: 'member', remaining: null }
+      });
+    }
+    
+    // Check free uses
+    const freeUses = user.free_uses_remaining ?? 3;
+    if (freeUses <= 0) {
+      return jsonResponse({
+        success: true,
+        data: { allowed: false, reason: 'no_free_uses', remaining: 0 }
+      });
+    }
+    
+    // Decrement free uses
+    await DB.prepare(`
+      UPDATE users SET free_uses_remaining = free_uses_remaining - 1 WHERE id = ?
+    `).bind(auth.userId).run();
+    
+    return jsonResponse({
+      success: true,
+      data: { allowed: true, reason: 'free_use', remaining: freeUses - 1 }
+    });
+  } catch (error) {
+    console.error('Use free use error:', error);
     return errorResponse('Internal server error', 500);
   }
 }
@@ -856,6 +899,9 @@ async function handleRequest(request) {
     }
     if (path === '/api/users/me' && method === 'PATCH') {
       return handleUpdateUser(request);
+    }
+    if (path === '/api/users/me/use-free' && method === 'POST') {
+      return handleUseFreeUse(request);
     }
     if (path === '/api/memberships' && method === 'GET') {
       return handleGetMemberships(request);

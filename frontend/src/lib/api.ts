@@ -64,6 +64,12 @@ export const user = {
       token,
       body: JSON.stringify(data),
     }),
+    
+  useFreeUse: (token: string) =>
+    apiFetch<any>('/api/users/me/use-free', {
+      method: 'POST',
+      token,
+    }),
 };
 
 // Memberships
