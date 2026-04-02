@@ -399,6 +399,25 @@ export default function Home() {
       <HeroBackground />
 
       <main className="relative min-h-screen flex flex-col items-center justify-center px-4 pt-6 pb-16">
+        
+        {/* ── Nav Bar ────────────────────────────────── */}
+        <nav className="w-full max-w-[540px] flex items-center justify-between mb-6">
+          <a href="/" className="text-white/60 hover:text-white text-sm font-medium transition-colors">
+            RMBG
+          </a>
+          <div className="flex items-center gap-4">
+            <a href="/membership" className="text-white/40 hover:text-white text-sm transition-colors">
+              Membership
+            </a>
+            <a href="/points" className="text-white/40 hover:text-white text-sm transition-colors">
+              Points
+            </a>
+            <a href="/profile" className="text-white/40 hover:text-white text-sm transition-colors">
+              Profile
+            </a>
+          </div>
+        </nav>
+
         <div className="w-full max-w-[540px]">
 
           {/* ── Header ─────────────────────────────────── */}
