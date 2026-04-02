@@ -1,0 +1,24 @@
+# Cloudflare Pages Configuration for RMBG Frontend
+name = "rmbg"
+account_id = "f5f3956578d118a6398a891c3aca2605"
+compatibility_date = "2024-01-01"
+
+# Build settings
+compatibility_flags = ["nodejs_compat"]
+
+# Environment variables exposed to the app
+[vars]
+NEXTAUTH_URL = "https://rmbg-176.pages.dev"
+
+# D1 Database binding
+# Note: Database ID will be filled after creation
+[[d1_databases]]
+binding = "DB"
+database_name = "rmbg-users"
+database_id = "<PENDING-D1-CREATION>"
+
+# Secrets (set via `wrangler secret put`)
+# AUTH_SECRET - run: wrangler secret put AUTH_SECRET
+# PAYPAL_CLIENT_ID - run: wrangler secret put PAYPAL_CLIENT_ID  
+# PAYPAL_CLIENT_SECRET - run: wrangler secret put PAYPAL_CLIENT_SECRET
+# PAYPAL_WEBHOOK_ID - run: wrangler secret put PAYPAL_WEBHOOK_ID
