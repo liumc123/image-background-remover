@@ -7,7 +7,8 @@
 // Constants & Config
 // =====================================================
 
-const DB = null; // Will be set by env in fetch handler
+// DB will be set by env in fetch handler
+let DB = null;
 
 // =====================================================
 // Utility Functions
@@ -888,25 +889,12 @@ async function handleRequest(request) {
 
 export default {
   async fetch(request, env, ctx) {
-    // Make env available globally for this request
-    globalThis.__env = env;
-    
-    // Override the request's env getter
-    const req = new Request(request.url, {
-      method: request.method,
-      headers: request.headers,
-      body: request.body,
-      redirect: request.redirect,
-      signal: request.signal
-    });
-    req.env = env;
+    // Set DB from env
+    DB = env.DB;
     
     // Route the request
-    const response = await handleRequest(req);
+    const response = await handleRequest(request);
     
     return response;
   }
 };
-
-// Make env accessible
-const globalForDb = globalThis;
