@@ -84,8 +84,13 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    // @ts-ignore
-    window.handleCredentialResponse = handleGoogleCallback;
+    // Listen for Google credential event from layout head
+    const handleGoogleCredential = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      handleGoogleCallback(customEvent.detail);
+    };
+    window.addEventListener('google-credential', handleGoogleCredential);
+    return () => window.removeEventListener('google-credential', handleGoogleCredential);
   }, [loadData]);
 
   const handleSignOut = () => {

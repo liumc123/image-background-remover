@@ -11,6 +11,16 @@ function Providers({ children }: { children: React.ReactNode }) {
   return <SessionProvider>{children}</SessionProvider>
 }
 
+// Google Identity Services callback - defined before script loads
+const googleCallbackCode = `
+window.handleCredentialResponse = function(response) {
+  // Store credential for React to pick up
+  window.__googleCredential = response.credential;
+  // Dispatch event so React components can react
+  window.dispatchEvent(new CustomEvent('google-credential', { detail: response }));
+};
+`
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -18,6 +28,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Google Identity Services - load before React hydrates */}
+        <script
+          src="https://accounts.google.com/gsi/client"
+          async
+          defer
+        />
+        {/* Google credential callback - must be defined before GIS loads */}
+        <script dangerouslySetInnerHTML={{ __html: googleCallbackCode }} />
+      </head>
       <body className="antialiased">
         <Providers>{children}</Providers>
       </body>

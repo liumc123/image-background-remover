@@ -6,16 +6,8 @@ import { removeBackground } from "@imgly/background-removal";
 type ProcessingState = "idle" | "processing" | "done" | "error";
 type User = { name: string; email: string; picture: string } | null;
 
-// ─── Load Google Identity Services ─────────────────────────
-function loadGIS() {
-  if (document.getElementById("google-script")) return;
-  const s = document.createElement("script");
-  s.id = "google-script";
-  s.src = "https://accounts.google.com/gsi/client";
-  s.async = true;
-  s.defer = true;
-  document.head.appendChild(s);
-}
+// ─── Load Google Identity Services (loaded in layout head) ──────────────────
+// Removed - now loaded in layout.tsx for proper timing
 
 // ─── Auth Button ───────────────────────────────────────────
 function AuthButton({ user, onSignOut }: { user: User; onSignOut: () => void }) {
@@ -270,7 +262,6 @@ export default function Home() {
 
   useEffect(() => {
     setMounted(true);
-    loadGIS();
 
     // Load stored token and user data
     const storedToken = localStorage.getItem('auth_token');
@@ -279,8 +270,10 @@ export default function Home() {
       loadUserData(storedToken);
     }
 
-    // @ts-ignore
-    window.handleCredentialResponse = async (response: { credential: string }) => {
+    // Listen for Google credential event (set up in layout head)
+    const handleGoogleCredential = async (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const response = customEvent.detail;
       try {
         const payload = JSON.parse(atob(response.credential.split('.')[1]));
         setUser({
@@ -305,6 +298,9 @@ export default function Home() {
         console.error("Failed to parse credential");
       }
     };
+
+    window.addEventListener('google-credential', handleGoogleCredential);
+    return () => window.removeEventListener('google-credential', handleGoogleCredential);
   }, []);
 
   async function loadUserData(token: string) {
