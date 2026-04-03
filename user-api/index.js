@@ -122,8 +122,8 @@ async function createPayPalOrder(amount, description, referenceId, clientId, cli
         brand_name: 'RMBG Studio',
         landing_page: 'BILLING',
         user_action: 'PAY_NOW',
-        return_url: 'https://rmbg-176.pages.dev/api/paypal/success',
-        cancel_url: 'https://rmbg-176.pages.dev/api/paypal/cancel'
+        return_url: 'https://rmbg-176.pages.dev/profile?payment=success',
+        cancel_url: 'https://rmbg-176.pages.dev/profile?payment=cancelled'
       }
     })
   });
@@ -788,6 +788,93 @@ async function handleGetTransactions(request) {
   }
 }
 
+// GET /api/paypal/success - PayPal redirects here after payment approval
+async function handlePayPalSuccess(request) {
+  try {
+    const url = new URL(request.url);
+    const token = url.searchParams.get('token'); // PayPal order ID
+    
+    if (!token) {
+      return Response.redirect('https://rmbg-176.pages.dev/profile?payment=error', 302);
+    }
+    
+    // Find our order by PayPal order ID
+    const storedOrder = await getPayPalOrderByExternalId(token);
+    
+    if (!storedOrder) {
+      return Response.redirect('https://rmbg-176.pages.dev/profile?payment=error', 302);
+    }
+    
+    // If already completed, just redirect
+    if (storedOrder.status === 'COMPLETED') {
+      return Response.redirect('https://rmbg-176.pages.dev/profile?payment=already', 302);
+    }
+    
+    // Capture the PayPal order
+    const clientId = request.env?.PAYPAL_CLIENT_ID;
+    const clientSecret = request.env?.PAYPAL_CLIENT_SECRET;
+    
+    if (!clientId || !clientSecret) {
+      return Response.redirect('https://rmbg-176.pages.dev/profile?payment=error', 302);
+    }
+    
+    const captureResult = await capturePayPalOrder(token, clientId, clientSecret);
+    
+    if (captureResult.status === 'COMPLETED') {
+      await updatePayPalOrderStatus(storedOrder.id, 'COMPLETED');
+      
+      if (storedOrder.type === 'membership') {
+        const membership = await getMembershipLevel(storedOrder.reference_id);
+        if (membership) {
+          const startsAt = new Date().toISOString();
+          const expiresAt = new Date(Date.now() + membership.duration_days * 24 * 60 * 60 * 1000).toISOString();
+          await createUserMembership({
+            id: generateId('mem'),
+            user_id: storedOrder.user_id,
+            membership_id: storedOrder.reference_id,
+            starts_at: startsAt,
+            expires_at: expiresAt
+          });
+          if (membership.bonus_points > 0) {
+            const newBalance = await updateUserPoints(storedOrder.user_id, membership.bonus_points);
+            await createPointTransaction({
+              id: generateId('txn'),
+              user_id: storedOrder.user_id,
+              amount: membership.bonus_points,
+              balance_after: newBalance,
+              type: 'reward',
+              reference_id: storedOrder.reference_id,
+              description: `Welcome bonus for ${membership.name}`
+            });
+          }
+        }
+      } else if (storedOrder.type === 'points') {
+        const pkg = await dbGet(DB.prepare('SELECT * FROM points_packages WHERE id = ?').bind(storedOrder.reference_id));
+        if (pkg) {
+          const totalPoints = pkg.points_amount + (pkg.bonus_points || 0);
+          const newBalance = await updateUserPoints(storedOrder.user_id, totalPoints);
+          await createPointTransaction({
+            id: generateId('txn'),
+            user_id: storedOrder.user_id,
+            amount: totalPoints,
+            balance_after: newBalance,
+            type: 'purchase',
+            reference_id: storedOrder.id,
+            description: `Purchased ${pkg.name}`
+          });
+        }
+      }
+      
+      return Response.redirect('https://rmbg-176.pages.dev/profile?payment=success', 302);
+    } else {
+      return Response.redirect('https://rmbg-176.pages.dev/profile?payment=failed', 302);
+    }
+  } catch (error) {
+    console.error('PayPal success handler error:', error);
+    return Response.redirect('https://rmbg-176.pages.dev/profile?payment=error', 302);
+  }
+}
+
 // POST /api/webhooks/paypal
 async function handlePayPalWebhook(request) {
   try {
@@ -920,6 +1007,9 @@ async function handleRequest(request) {
     }
     if (path === '/api/webhooks/paypal' && method === 'POST') {
       return handlePayPalWebhook(request);
+    }
+    if (path === '/api/paypal/success' && method === 'GET') {
+      return handlePayPalSuccess(request);
     }
     
     return errorResponse('Not found', 404);

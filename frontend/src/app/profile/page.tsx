@@ -31,7 +31,6 @@ interface MembershipLevel {
 }
 
 export default function ProfilePage() {
-  const router = typeof window !== 'undefined' ? require('next/navigation').useRouter() : null;
   const [token, setToken] = useState<string | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [membershipsList, setMembershipsList] = useState<MembershipLevel[]>([]);
@@ -39,8 +38,19 @@ export default function ProfilePage() {
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    // Check for payment status in URL
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get('payment');
+    if (payment) {
+      setPaymentStatus(payment);
+      // Clean URL after reading
+      window.history.replaceState({}, '', '/profile');
+    }
+  }, []);
 
   const loadData = useCallback(async () => {
     const stored = localStorage.getItem('auth_token');
@@ -223,6 +233,21 @@ export default function ProfilePage() {
                 Sign Out
               </button>
             </div>
+
+            {/* Payment Status Banner */}
+            {paymentStatus && (
+              <div className={`mb-6 p-4 rounded-2xl text-center text-sm font-medium fade-up ${
+                paymentStatus === 'success' ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-300' :
+                paymentStatus === 'failed' || paymentStatus === 'error' ? 'bg-red-500/20 border border-red-500/30 text-red-300' :
+                'bg-white/10 border border-white/20 text-white/80'
+              }`}>
+                {paymentStatus === 'success' && '🎉 Payment successful! Your membership/points have been activated.'}
+                {paymentStatus === 'cancelled' && 'Payment was cancelled. No charges were made.'}
+                {paymentStatus === 'failed' && 'Payment failed. Please try again or contact support.'}
+                {paymentStatus === 'error' && 'An error occurred during payment. Please try again.'}
+                {paymentStatus === 'already' && 'This order has already been processed.'}
+              </div>
+            )}
 
             {/* Profile Card */}
             <div className="flex items-center gap-5 mb-8 fade-up">
