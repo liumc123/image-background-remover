@@ -266,7 +266,6 @@ export default function Home() {
   const [user, setUser] = useState<User>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [userData, setUserData] = useState<any>(null);
-  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -353,7 +352,6 @@ export default function Home() {
       setErrorMessage("Please sign in to use this feature"); setState("error"); return;
     }
     if (!canProcess()) {
-      setShowUpgradePrompt(true);
       setState("error");
       return;
     }
@@ -537,11 +535,11 @@ export default function Home() {
               ))}
             </div>
 
-            {/* User Status Bar */}
+            {/* User Status Bar - Minimal */}
             <div className={`mt-4 ${mounted ? "fade-up fade-up-4" : ""}`}>
               {user && userData ? (
                 <div className="flex items-center justify-center gap-3">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.10]">
+                  <a href="/profile" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.10] hover:bg-white/[0.10] transition-colors">
                     {user.picture && (
                       <img src={user.picture} alt={user.name} className="w-5 h-5 rounded-full" />
                     )}
@@ -556,48 +554,11 @@ export default function Home() {
                     }`}>
                       {getUsageMessage()}
                     </span>
-                  </div>
-                  <button
-                    onClick={handleSignOut}
-                    className="text-white/30 hover:text-white/60 text-xs transition-colors"
-                  >
-                    Sign out
-                  </button>
+                  </a>
                 </div>
-              ) : (
-                <div className="flex flex-col items-center gap-3">
-                  <p className="text-white/50 text-sm">Sign in to get 3 free uses</p>
-                  <div id="g_id_onload"
-                    data-client_id="810081244227-kqvuga30g7g9d34tpqj42klm7m367knk.apps.googleusercontent.com"
-                    data-context="signin"
-                    data-ux_mode="popup"
-                    data-callback="handleCredentialResponse"
-                    data-auto_prompt="false">
-                  </div>
-                  <div className="g_id_signin"
-                    data-type="standard"
-                    data-shape="rectangular"
-                    data-theme="outline"
-                    data-text="signin_with"
-                    data-size="large"
-                    data-logo_alignment="left">
-                  </div>
-                </div>
-              )}
+              ) : null}
             </div>
 
-            {/* Upgrade Prompt */}
-            {showUpgradePrompt && !userData?.currentMembership && (
-              <div className="mt-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-center">
-                <p className="text-amber-400 text-sm font-medium mb-2">No free uses remaining</p>
-                <a
-                  href="/profile"
-                  className="inline-block px-4 py-2 rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white text-sm font-medium transition-all"
-                >
-                  Upgrade to Continue
-                </a>
-              </div>
-            )}
           </div>
 
           {/* ── Main card ───────────────────────────────── */}
@@ -606,62 +567,115 @@ export default function Home() {
             {/* Demo showcase */}
             {state === "idle" && <DemoShowcase />}
 
-            {/* Upload zone */}
+            {/* Upload zone - requires login */}
             {(state === "idle" || state === "error") && (
-              <div onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }} onDragLeave={() => setIsDragOver(false)} onDrop={handleDrop}>
-                <input
-                  ref={fileInputRef}
-                  id="file-input"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) processImage(f); }}
-                />
-                <label htmlFor="file-input" className="cursor-pointer block rounded-2xl">
-                  <div
-                    className={`
-                      relative rounded-2xl border-2 border-dashed transition-all duration-300 text-center overflow-hidden
-                      ${isDragOver
-                        ? "border-violet-400 bg-violet-500/10 scale-[1.01]"
-                        : "border-white/15 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/25"
-                      }
-                    `}
-                  >
-                    {isDragOver && (
-                      <div className="absolute inset-0 bg-gradient-to-b from-violet-500/10 to-transparent pointer-events-none" />
-                    )}
-                    <div className={`py-14 flex flex-col items-center gap-4 ${isDragOver ? "scale-[1.02]" : ""} transition-transform duration-300`}>
-                      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 float-anim ${isDragOver ? "bg-violet-500/30 scale-110" : "bg-white/[0.07]"}`}>
-                        {isDragOver ? (
-                          <svg className="w-7 h-7 text-violet-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 8.25H7.5a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H15m0-3l-3-3m0 0l-3 3m3-3v12" />
-                          </svg>
-                        ) : (
-                          <svg className="w-7 h-7 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                          </svg>
-                        )}
+              <div>
+                {!user ? (
+                  // Not logged in - show login prompt
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-white font-semibold text-lg mb-2">Sign in to get started</h3>
+                    <p className="text-white/50 text-sm mb-6 max-w-xs mx-auto">
+                      Create a free account to get 3 background removals, or sign in with Google to continue
+                    </p>
+                    <div className="flex flex-col items-center gap-3">
+                      <div id="g_id_onload"
+                        data-client_id="810081244227-kqvuga30g7g9d34tpqj42klm7m367knk.apps.googleusercontent.com"
+                        data-context="signin"
+                        data-ux_mode="popup"
+                        data-callback="handleCredentialResponse"
+                        data-auto_prompt="false">
                       </div>
-                      <div>
-                        <p className="text-white font-semibold text-base">
-                          {isDragOver ? "Release to upload" : "Drop your image here"}
-                        </p>
-                        <p className="text-white/35 text-sm mt-1">
-                          or{" "}
-                          <span className="text-violet-400 font-medium hover:text-violet-300">browse files</span>
-                          {" · "}JPG, PNG, WebP · max 10MB
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        {["JPG", "PNG", "WebP"].map((fmt) => (
-                          <span key={fmt} className="text-[10px] text-white/25 px-2 py-0.5 rounded-full border border-white/10">
-                            {fmt}
-                          </span>
-                        ))}
+                      <div className="g_id_signin"
+                        data-type="standard"
+                        data-shape="rectangular"
+                        data-theme="outline"
+                        data-text="signin_with"
+                        data-size="large"
+                        data-logo_alignment="left">
                       </div>
                     </div>
                   </div>
-                </label>
+                ) : !userData?.currentMembership && (userData?.free_uses_remaining ?? 0) <= 0 ? (
+                  // Logged in but no uses left and no membership
+                  <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-8 text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center mx-auto mb-4">
+                      <span className="text-3xl">⚠️</span>
+                    </div>
+                    <h3 className="text-white font-semibold text-lg mb-2">No free uses remaining</h3>
+                    <p className="text-white/50 text-sm mb-6">
+                      You've used all 3 of your free background removals. Upgrade to continue!
+                    </p>
+                    <a
+                      href="/profile"
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-semibold text-sm shadow-lg shadow-violet-500/30 transition-all"
+                    >
+                      <span>Upgrade Now</span>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                    </a>
+                  </div>
+                ) : (
+                  // Logged in with uses available - show upload UI
+                  <div onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }} onDragLeave={() => setIsDragOver(false)} onDrop={handleDrop}>
+                    <input
+                      ref={fileInputRef}
+                      id="file-input"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) processImage(f); }}
+                    />
+                    <label htmlFor="file-input" className="cursor-pointer block rounded-2xl">
+                      <div
+                        className={`
+                          relative rounded-2xl border-2 border-dashed transition-all duration-300 text-center overflow-hidden
+                          ${isDragOver
+                            ? "border-violet-400 bg-violet-500/10 scale-[1.01]"
+                            : "border-white/15 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/25"
+                          }
+                        `}
+                      >
+                        {isDragOver && (
+                          <div className="absolute inset-0 bg-gradient-to-b from-violet-500/10 to-transparent pointer-events-none" />
+                        )}
+                        <div className={`py-14 flex flex-col items-center gap-4 ${isDragOver ? "scale-[1.02]" : ""} transition-transform duration-300`}>
+                          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 float-anim ${isDragOver ? "bg-violet-500/30 scale-110" : "bg-white/[0.07]"}`}>
+                            {isDragOver ? (
+                              <svg className="w-7 h-7 text-violet-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 8.25H7.5a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H15m0-3l-3-3m0 0l-3 3m3-3v12" />
+                              </svg>
+                            ) : (
+                              <svg className="w-7 h-7 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                              </svg>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-white font-semibold text-base">
+                              {isDragOver ? "Release to upload" : "Drop your image here"}
+                            </p>
+                            <p className="text-white/35 text-sm mt-1">
+                              or{" "}
+                              <span className="text-violet-400 font-medium hover:text-violet-300">browse files</span>
+                              {" · "}JPG, PNG, WebP · max 10MB
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            {["JPG", "PNG", "WebP"].map((fmt) => (
+                              <span key={fmt} className="text-[10px] text-white/25 px-2 py-0.5 rounded-full border border-white/10">
+                                {fmt}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                )}
               </div>
             )}
 
